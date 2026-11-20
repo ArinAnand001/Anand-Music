@@ -644,6 +644,13 @@ jobs:
           cp android/app/build/outputs/apk/release/app-release.apk "${APP_NAME}.apk"
           ls -la "${APP_NAME}.apk"
 
+      - name: Upload APK as a downloadable artifact
+        if: steps.web.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Anand-APK
+          path: Anand.apk
+          retention-days: 30
       - name: Publish the download
         if: steps.web.outputs.found == 'true'
         env:
