@@ -1,4 +1,5 @@
 # Builds an Android app (APK) from the zip file you upload to this repository.
+# Keep this repository private so the release signing key can be saved for future updates.
 #
 # How to use:
 #   1. Keep this file at .github/workflows/build-apk.yml
