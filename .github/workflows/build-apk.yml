@@ -673,25 +673,6 @@ jobs:
           name: Anand-APK
           path: Anand.apk
           retention-days: 30
-      - name: Publish the download
+      - name: Report APK artifact
         if: steps.web.outputs.found == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ZIP: ${{ steps.web.outputs.zip }}
-        run: |
-          set -euo pipefail
-          TAG="build-${GITHUB_RUN_NUMBER}"
-          LINK="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/${APP_NAME}.apk"
-          NOTES=$(printf 'Built from `%s`.\n\nInstall: open this page on your Android phone, tap **%s.apk**, then tap Install. If Android asks, allow installs from this source.\n\nThis version installs over the previous one and keeps your songs.' "$ZIP" "$APP_NAME")
-          gh release create "$TAG" "${APP_NAME}.apk" --title "${APP_NAME} build ${GITHUB_RUN_NUMBER}" --notes "$NOTES" --latest --target "$(git rev-parse HEAD)"
-          # keep the five newest builds
-          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[5:] | .[].tagName' \
-            | grep '^build-' | xargs -r -n1 gh release delete --cleanup-tag -y || true
-          {
-            echo "## Your app is ready"
-            echo ""
-            echo "Download link (always the newest build):"
-            echo ""
-            echo "$LINK"
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "Download: $LINK"
+        run: echo "APK uploaded as the Anand-APK artifact. Open this workflow run and download it from the Artifacts section."
