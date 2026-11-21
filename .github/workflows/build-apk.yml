@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_NAME: Anand              # name under the app icon, and the APK file name
+  APP_NAME: 'Anand Music'       # name under the app icon, and the APK file name
   APP_ID: com.mixtape.player   # Android app id; changing it later installs a separate app
 
 jobs:
@@ -664,7 +664,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Anand-APK
-          path: Anand.apk
+          path: 'Anand Music.apk'
           retention-days: 30
       - name: Report APK artifact
         if: steps.web.outputs.found == 'true'
