@@ -150,6 +150,10 @@ select{height:42px;border-radius:12px;border:0;background:var(--surface-2);paddi
 .mosaic{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%;background:var(--surface-2)}
 .mosaic .cover{width:100%;height:100%;border-radius:0}
 .mosaic.one{grid-template-columns:1fr;grid-template-rows:1fr}
+.mosaic.two{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.mosaic.three{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.mosaic.three .cover:last-child{grid-column:1 / span 2}
+.mosaic.four{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .mosaic .cover .ini{font-size:26px}
 .mosaic.one .cover .ini{font-size:46px}
 .liked-cover{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(150deg,var(--heart),#F59B3D);color:#fff}
@@ -666,6 +670,96 @@ async function makeThumb(blob){
   }catch(e){ return null; }
 }
 
+
+/* ---------- Automatic music artwork lookup ---------- */
+const AUDIO_DB='https://www.theaudiodb.com/api/v1/json/123';
+let lastArtworkApiCall=0, artworkScanRunning=false;
+const artworkUrlCache=new Map();
+const artworkNoMatch=(()=>{
+  try{return new Set(JSON.parse(localStorage.getItem('mixtape:artwork-no-match:v1')||'[]'));}
+  catch(e){return new Set();}
+})();
+function saveArtworkNoMatch(){
+  try{localStorage.setItem('mixtape:artwork-no-match:v1',JSON.stringify([...artworkNoMatch].slice(-1200)));}catch(e){}
+}
+async function audioDbJSON(url){
+  const wait=Math.max(0,2200-(Date.now()-lastArtworkApiCall));
+  if(wait) await new Promise(resolve=>setTimeout(resolve,wait));
+  lastArtworkApiCall=Date.now();
+  const r=await fetch(url,{cache:'force-cache'});
+  if(r.status===429) throw new Error('Artwork lookup is temporarily limited');
+  if(!r.ok) throw new Error('Artwork lookup failed: '+r.status);
+  return r.json();
+}
+async function fetchArtworkImage(url){
+  if(!url||!/^https:\\/\\//i.test(url)) return null;
+  const r=await fetch(url,{cache:'force-cache'});
+  if(!r.ok) return null;
+  const blob=await r.blob();
+  if(!blob.type.startsWith('image/')) return null;
+  return makeThumb(blob);
+}
+async function findAutomaticArtwork(title,artist,album){
+  const a=(artist||'').trim(), t=(title||'').trim(), al=(album||'').trim();
+  if(!t&&!al) return {blob:null,notFound:true};
+  const cacheKey=(a+'|'+(al||t)).toLowerCase();
+  let imageUrl=artworkUrlCache.get(cacheKey);
+  if(imageUrl===undefined){
+    imageUrl=null;
+    if(al){
+      const q=new URLSearchParams(); if(a) q.set('s',a); q.set('a',al);
+      const data=await audioDbJSON(AUDIO_DB+'/searchalbum.php?'+q.toString());
+      const albums=Array.isArray(data.album)?data.album:[];
+      const exact=albums.find(x=>(x.strAlbum||'').trim().toLowerCase()===al.toLowerCase()
+        &&(!a||!x.strArtist||x.strArtist.toLowerCase().includes(a.toLowerCase())||a.toLowerCase().includes(x.strArtist.toLowerCase())));
+      const pick=exact||albums[0];
+      if(pick) imageUrl=pick.strAlbumThumbHQ||pick.strAlbumThumb||pick.strAlbumCDart||null;
+    }
+    if(!imageUrl&&a&&t){
+      const q=new URLSearchParams({s:a,t:t});
+      const data=await audioDbJSON(AUDIO_DB+'/searchtrack.php?'+q.toString());
+      const tracks=Array.isArray(data.track)?data.track:[];
+      const exact=tracks.find(x=>(x.strTrack||'').trim().toLowerCase()===t.toLowerCase()
+        &&(!x.strArtist||x.strArtist.toLowerCase().includes(a.toLowerCase())||a.toLowerCase().includes(x.strArtist.toLowerCase())));
+      const pick=exact||tracks[0];
+      if(pick) imageUrl=pick.strTrackThumb||pick.strAlbumThumbHQ||pick.strAlbumThumb||null;
+    }
+    artworkUrlCache.set(cacheKey,imageUrl||null);
+  }
+  if(!imageUrl) return {blob:null,notFound:true};
+  const blob=await fetchArtworkImage(imageUrl);
+  return {blob,notFound:!blob};
+}
+async function saveSongArtwork(song,thumb){
+  if(!thumb) return false;
+  const buf=await thumb.arrayBuffer();
+  await write('covers',t=>t.objectStore('covers').put({buf,type:'image/jpeg'},song.id));
+  S.covers.set(song.id,URL.createObjectURL(new Blob([buf],{type:'image/jpeg'})));
+  song.coverPath='covers/'+song.id+'.jpg';
+  await putSong(song);
+  artworkNoMatch.delete(song.id); saveArtworkNoMatch();
+  if(CLOUD&&song.remote) await enqueue({kind:'patchSong',id:song.id,fields:{cover_path:song.coverPath}});
+  else if(CLOUD&&!song.pending&&!song.localOnly) await enqueue({kind:'uploadSong',id:song.id});
+  return true;
+}
+async function fillMissingArtwork(){
+  if(artworkScanRunning||navigator.onLine===false) return;
+  artworkScanRunning=true;
+  try{
+    const todo=S.songs.filter(x=>!x.coverPath&&!S.covers.has(x.id)&&!artworkNoMatch.has(x.id)).slice(0,4);
+    let changed=false;
+    for(const song of todo){
+      if(navigator.onLine===false) break;
+      try{
+        const result=await findAutomaticArtwork(song.title,song.artist,song.album);
+        if(result.blob){ await saveSongArtwork(song,result.blob); changed=true; }
+        else if(result.notFound){ artworkNoMatch.add(song.id); saveArtworkNoMatch(); }
+      }catch(e){ if(navigator.onLine===false) break; }
+    }
+    if(changed){ refreshRowsSoon(); renderPlaylists(); updateNowPlaying(); }
+  }finally{artworkScanRunning=false;}
+}
+
 /* ---------- App state ---------- */
 const S={
   songs:[], byId:new Map(), playlists:[], covers:new Map(), cached:new Set(), coverMiss:new Set(),
@@ -697,15 +791,15 @@ function coverHTML(song,cls){
   const u=S.covers.get(song.id);
   if(u) return `<span class="cover ${cls||''}"><img src="${u}" alt="" loading="lazy"></span>`;
   const ch=(song.title||'?').replace(/^[^\p{L}\p{N}]+/u,'').charAt(0).toUpperCase()||'♪';
-  return `<span class="cover gen ${cls||''}" style="--h:${hashHue((song.title||'')+(song.artist||''))}"><span class="ini">${esc(ch)}</span></span>`;
+  return `<span class="cover gen ${cls||''}" style="--h:${(260+hashHue((song.title||'')+(song.artist||''))%45)}"><span class="ini">${esc(ch)}</span></span>`;
 }
 function songHue(song){ return song? hashHue((song.title||'')+(song.artist||'')) : 228; }
 function playlistCover(pl){
   if(pl.id==='liked') return `<div class="liked-cover">${icon('heart',true)}</div>`;
   const songs=pl.songIds.map(id=>S.byId.get(id)).filter(Boolean);
-  if(songs.length===0){ return `<div class="mosaic one"><span class="cover gen" style="--h:${hashHue(pl.name)}"><span class="ini">${esc((pl.name||'?').charAt(0).toUpperCase())}</span></span></div>`; }
-  if(songs.length<4) return `<div class="mosaic one">${coverHTML(songs[0])}</div>`;
-  return `<div class="mosaic">${songs.slice(0,4).map(s=>coverHTML(s)).join('')}</div>`;
+  if(songs.length===0){ return '<div class="mosaic one"><span class="cover gen" style="--h:'+(260+hashHue(pl.name)%45)+'"><span class="ini">'+esc((pl.name||'?').charAt(0).toUpperCase())+'</span></span></div>'; }
+  const n=Math.min(4,songs.length), cls=n===1?'one':n===2?'two':n===3?'three':'four';
+  return '<div class="mosaic '+cls+'">'+songs.slice(0,4).map(s=>coverHTML(s)).join('')+'</div>';
 }
 
 /* ---------- Derived lists ---------- */
@@ -1267,9 +1361,17 @@ async function importFiles(files){
       if(!probe.ok){ failed.push(f.name); continue; }
       const tags=parseTags(buf); const fn=fromFilename(f.name);
       const id=uid();
+      const title=tags.title||fn.title, artist=tags.artist||fn.artist||'', album=tags.album||'';
       let thumb=null; if(tags.picture) thumb=await makeThumb(tags.picture);
+      if(!thumb&&navigator.onLine!==false){
+        try{
+          const art=await findAutomaticArtwork(title,artist,album);
+          thumb=art.blob;
+          if(art.notFound){ artworkNoMatch.add(id); saveArtworkNoMatch(); }
+        }catch(e){}
+      }
       const tooBig=f.size>MAX_UPLOAD;
-      const song={id,title:tags.title||fn.title,artist:tags.artist||fn.artist||'',album:tags.album||'',duration:probe.duration,size:f.size,type,fileName:f.name,addedAt:Date.now()+i,liked:false,
+      const song={id,title,artist,album,duration:probe.duration,size:f.size,type,fileName:f.name,addedAt:Date.now()+i,liked:false,
         filePath:'songs/'+id+'.'+extFor(f.name,type), coverPath: thumb?'covers/'+id+'.jpg':null, remote:false, pending:!!CLOUD&&!tooBig, localOnly:!!CLOUD&&tooBig};
       if(CLOUD&&tooBig) big++;
       const thumbBuf=thumb? await thumb.arrayBuffer() : null;
@@ -1705,6 +1807,7 @@ try{
   }
   renderAll(); updateNowPlaying();
   sync();
+  fillMissingArtwork();
 })();
 })();
 </script>
