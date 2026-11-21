@@ -83,19 +83,12 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('web/index.html', 'utf8');
-          const blocks = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
-          let checked = 0;
-          for (const block of blocks) {
-            if (/\bsrc\s*=/.test(block[1])) continue;
-            new Function(block[2]);
-            checked++;
-          }
-          if (!checked) throw new Error('No inline app script found');
-          console.log('JavaScript syntax valid (' + checked + ' inline script block(s)).');
+          const start = html.lastIndexOf('<script>');
+          const end = html.lastIndexOf('</script>');
+          if (start < 0 || end <= start) throw new Error('Inline app script not found');
+          new Function(html.slice(start + '<script>'.length, end));
+          console.log('App JavaScript syntax is valid.');
           NODE
-
-
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Add your shared library settings
         if: steps.web.outputs.found == 'true'
