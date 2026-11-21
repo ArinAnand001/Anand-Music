@@ -76,6 +76,25 @@ jobs:
           # The root index.html is the maintained app source; overlay it onto the uploaded bundle.
           if [ -f index.html ]; then cp index.html web/index.html; fi
           echo "found=true" >> "$GITHUB_OUTPUT"
+
+      - name: Validate app JavaScript
+        if: steps.web.outputs.found == 'true'
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('web/index.html', 'utf8');
+          const blocks = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          let checked = 0;
+          for (const block of blocks) {
+            if (/\\bsrc\\s*=/.test(block[1])) continue;
+            new Function(block[2]);
+            checked++;
+          }
+          if (!checked) throw new Error('No inline app script found');
+          console.log('JavaScript syntax valid (' + checked + ' inline script block(s)).');
+          NODE
+
+
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Add your shared library settings
