@@ -1496,7 +1496,7 @@ let listenStats=readStats();
 function dayKey(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 function saveStats(){try{localStorage.setItem(STATS_KEY,JSON.stringify(listenStats));}catch(e){}}
 function trackPlay(){
-  const id=currentId(); if(!id)return;
+  const id=currentId(); if(!id||audio.src===SILENT)return;
   listenStats.plays=(listenStats.plays||0)+1;
   if(!listenStats.unique.includes(id))listenStats.unique.push(id);
   const k=dayKey(Date.now());listenStats.days[k]=(listenStats.days[k]||0)+1;
@@ -1530,7 +1530,7 @@ function renderStats(){
     for(let i=0;i<days;i++){const d=new Date(start);d.setDate(start.getDate()+i);points.push({date:d,count:listenStats.days[dayKey(d)]||0});}
   }
   const max=Math.max(1,...points.map(p=>p.count));
-  $('#statsChart').innerHTML=points.map(p=>'<div class="stats-bar-wrap" title="'+esc(p.date.toLocaleDateString()+': '+p.count+' plays)+'"><div class="stats-bar" style="height:'+Math.max(2,p.count/max*100)+'%"></div></div>').join('');
+  $('#statsChart').innerHTML=points.map(p=>'<div class="stats-bar-wrap" title="'+esc(p.date.toLocaleDateString()+': '+p.count+' plays')+'"><div class="stats-bar" style="height:'+Math.max(2,p.count/max*100)+'%"></div></div>').join('');
   const fmtDate=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
   $('#statsStart').textContent=points.length?fmtDate(points[0].date):'—';
   $('#statsEnd').textContent=points.length?fmtDate(points[points.length-1].date):'Today';
