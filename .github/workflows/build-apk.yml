@@ -22,6 +22,7 @@ on:
   push:
     paths:
       - '**.zip'
+      - 'index.html'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -72,6 +73,8 @@ jobs:
           WEB=$(dirname "$IDX")
           rm -rf web && mkdir web && cp -R "$WEB"/. web/
           rm -rf web/__MACOSX
+          # The root index.html is the maintained app source; overlay it onto the uploaded bundle.
+          if [ -f index.html ]; then cp index.html web/index.html; fi
           echo "found=true" >> "$GITHUB_OUTPUT"
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
