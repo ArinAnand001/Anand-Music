@@ -1198,6 +1198,10 @@ async function runOp(op){
     await cloud.upsert('songs',songRow(s));
     const now=S.byId.get(op.id); if(now){ now.pending=false; now.remote=true; await putSong(now); refreshRowsSoon(); }
   } else if(op.kind==='patchSong'){
+    if(op.fields&&op.fields.cover_path){
+      const song=S.byId.get(op.id), cv=await getOne('covers',op.id);
+      if(song&&cv) await cloud.put(op.fields.cover_path,cv instanceof Blob?cv:new Blob([cv.buf],{type:'image/jpeg'}),'image/jpeg');
+    }
     await cloud.patch('songs',op.id,op.fields);
   } else if(op.kind==='deleteSong'){
     await cloud.remove('songs',op.id);
@@ -1286,7 +1290,7 @@ async function sync(){
   }finally{ syncing=false; }
   renderStatus(); refreshRowsSoon();
   if(syncAgain){ syncAgain=false; return sync(); }
-  if(S.sync.state==='ok') downloadMissing();
+  if(S.sync.state==='ok'){ downloadMissing(); fillMissingArtwork(); }
 }
 const inflight=new Map();
 function cacheSong(s){
@@ -1765,7 +1769,7 @@ let wasOffline=isOffline();
 function updateOnline(){
   const off=isOffline();
   renderStatus();
-  if(off!==wasOffline){ wasOffline=off; refreshRowsSoon(); if(!off) sync(); }
+  if(off!==wasOffline){ wasOffline=off; refreshRowsSoon(); if(!off){ sync(); fillMissingArtwork(); } }
 }
 window.addEventListener('online',updateOnline); window.addEventListener('offline',updateOnline);
 let deferredInstall=null;
