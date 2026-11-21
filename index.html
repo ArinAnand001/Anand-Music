@@ -268,6 +268,43 @@ body.offline .row.remote .row-main{opacity:.42}
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important}
 }
+
+/* Midnight Plum visual system */
+:root{
+  --bg:#100B16;--surface:#191222;--surface-2:#24192F;--ink:#F5EFFA;
+  --muted:#A99BB5;--line:rgba(226,205,241,.12);--accent:#A879D8;
+  --accent-ink:#160D20;--accent-soft:rgba(168,121,216,.17);
+  --heart:#E6A2D1;--danger:#F07891;
+  --shadow:0 14px 38px rgba(0,0,0,.38);
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--ink)}
+.top,.tabs,.mini,.player,.sheet,.backdrop{background:var(--bg)}
+.btn.primary,.bigplay{background:var(--accent);color:var(--accent-ink)}
+.btn.soft,.count,.iconbtn,.search,select,.pl-card,.row{background:var(--surface)}
+.btn.soft{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:#D8B6F2;border-color:var(--accent)}
+input,select{color:var(--ink)}
+.stats-wrap{padding:18px 16px 34px;max-width:900px;margin:0 auto}
+.stats-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat-tile{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:17px 14px;min-width:0}
+.stat-tile .v{font-size:clamp(25px,6vw,38px);font-weight:700;letter-spacing:-1.5px;line-height:1.1}
+.stat-tile .k{font-size:13px;color:var(--muted);margin-top:6px}
+.stat-icon{width:38px;height:38px;border-radius:13px;background:rgba(168,121,216,.13);color:#D5A8F2;display:grid;place-items:center;margin-bottom:13px}
+.stat-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.stats-divider{height:1px;background:var(--line);margin:20px 0}
+.stats-filters{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin:18px 0 24px}
+.stats-filters button{border:1px solid var(--line);background:transparent;color:var(--muted);padding:9px 14px;border-radius:999px;font:600 14px var(--font-body)}
+.stats-filters button.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.stats-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stat-chart-title{font-size:15px;color:var(--muted);margin:24px 0 14px}
+.stats-chart{height:190px;display:flex;align-items:flex-end;gap:7px;border-bottom:1px solid var(--line);padding:0 2px}
+.stats-bar-wrap{height:100%;flex:1;display:flex;align-items:flex-end;min-width:0}
+.stats-bar{width:100%;min-height:3px;background:linear-gradient(180deg,#C79AE9,#8050B4);border-radius:6px 6px 0 0}
+.stats-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:9px}
+.stats-empty{color:var(--muted);font-size:14px;text-align:center;padding:24px 8px}
+@media(max-width:480px){.stat-tile{padding:14px 11px}.stats-top{gap:8px}.stat-tile .k{font-size:11px}.stats-secondary{gap:8px}}
+
 </style>
 </head>
 <body>
@@ -311,6 +348,7 @@ body.offline .row.remote .row-main{opacity:.42}
   <nav class="tabs" role="tablist" aria-label="Library">
     <button role="tab" id="tab-songs" aria-selected="true" data-tab="songs">Songs <span class="count" id="songCount">0</span></button>
     <button role="tab" id="tab-playlists" aria-selected="false" data-tab="playlists">Playlists <span class="count" id="plCount">0</span></button>
+    <button role="tab" id="tab-stats" aria-selected="false" data-tab="stats">Stats</button>
   </nav>
 
   <main id="main">
@@ -377,6 +415,26 @@ body.offline .row.remote .row-main{opacity:.42}
       </div>
     </section>
 
+    <section class="view" id="view-stats" hidden>
+      <div class="stats-wrap">
+        <div class="stats-top">
+          <div class="stat-tile"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.2l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></div><div class="v" id="statLiked">0</div><div class="k">Liked Songs</div></div>
+          <div class="stat-tile"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="2"/></svg></div><div class="v" id="statPlaylists">0</div><div class="k">Playlists</div></div>
+          <div class="stat-tile"><div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/></svg></div><div class="v" id="statPlays">0</div><div class="k">Total Plays</div></div>
+        </div>
+        <div class="stats-divider"></div>
+        <div class="stats-filters" id="statsFilters">
+          <button data-range="7d" class="active">7d</button><button data-range="30d">30d</button><button data-range="3mo">3mo</button><button data-range="all">All</button>
+        </div>
+        <div class="stats-secondary">
+          <div class="stat-tile"><div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div><div class="v" id="statUnique">0</div><div class="k">Unique Songs</div></div>
+          <div class="stat-tile"><div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="v" id="statTime">0 min</div><div class="k">Time Listened</div></div>
+        </div>
+        <div class="stat-chart-title">Plays per day</div>
+        <div class="stats-chart" id="statsChart"></div>
+        <div class="stats-labels"><span id="statsStart">—</span><span id="statsEnd">Today</span></div>
+      </div>
+    </section>
     <div class="storage" id="storageInfo"></div>
   </main>
 
@@ -734,6 +792,7 @@ function renderPlaylist(){
 function renderAll(){
   renderSongs(); renderPlaylists();
   if(S.tab==='playlist') renderPlaylist();
+  if(S.tab==='stats') renderStats();
   renderStorage(); renderStatus();
 }
 let rowsT=null;
@@ -776,7 +835,9 @@ function renderStatus(){
 /* ---------- Tabs & navigation ---------- */
 function showTab(t){
   S.tab=t;
-  $('#view-songs').hidden=t!=='songs'; $('#view-playlists').hidden=t!=='playlists'; $('#view-playlist').hidden=t!=='playlist';
+  $('#view-songs').hidden=t!=='songs'; $('#view-playlists').hidden=t!=='playlists'; $('#view-playlist').hidden=t!=='playlist'; $('#view-stats').hidden=t!=='stats';
+  $('#tab-stats').setAttribute('aria-selected',t==='stats');
+  if(t==='stats') renderStats();
   $('#tab-songs').setAttribute('aria-selected',t==='songs');
   $('#tab-playlists').setAttribute('aria-selected',t==='playlists'||t==='playlist');
   if(t==='playlist') renderPlaylist();
@@ -1426,9 +1487,62 @@ function playNext(id){
   updateUpNext(); saveState(); toast('Playing next');
 }
 
+
+/* ---------- Listening statistics (stored privately on this device) ---------- */
+const STATS_KEY='anand:listen-stats:v1';
+let statsRange='7d', lastStatsTick=0;
+function readStats(){try{return JSON.parse(localStorage.getItem(STATS_KEY)||'null')||{plays:0,unique:[],days:{},seconds:0};}catch(e){return {plays:0,unique:[],days:{},seconds:0};}}
+let listenStats=readStats();
+function dayKey(d){const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+function saveStats(){try{localStorage.setItem(STATS_KEY,JSON.stringify(listenStats));}catch(e){}}
+function trackPlay(){
+  const id=currentId(); if(!id)return;
+  listenStats.plays=(listenStats.plays||0)+1;
+  if(!listenStats.unique.includes(id))listenStats.unique.push(id);
+  const k=dayKey(Date.now());listenStats.days[k]=(listenStats.days[k]||0)+1;
+  saveStats(); if(S.tab==='stats')renderStats();
+}
+function trackListenTime(){
+  if(audio.paused||audio.src===SILENT)return;
+  const now=Date.now();if(lastStatsTick){const sec=Math.min(3,Math.max(0,(now-lastStatsTick)/1000));if(sec>0.15){listenStats.seconds=(listenStats.seconds||0)+sec;saveStats();}}
+  lastStatsTick=now;
+}
+function renderStats(){
+  if(!$('#view-stats'))return;
+  const liked=S.songs.filter(x=>x.liked).length;
+  $('#statLiked').textContent=liked;
+  $('#statPlaylists').textContent=S.playlists.length;
+  $('#statPlays').textContent=listenStats.plays||0;
+  $('#statUnique').textContent=listenStats.unique.length;
+  $('#statTime').textContent=fmtLong(listenStats.seconds||0);
+  const today=new Date();let days=7;
+  if(statsRange==='30d')days=30;else if(statsRange==='3mo')days=90;
+  const start=new Date(today);start.setHours(0,0,0,0);
+  if(statsRange!=='all')start.setDate(start.getDate()-days+1);
+  const points=[];
+  if(statsRange==='all'){
+    const keys=Object.keys(listenStats.days||{}).sort();
+    const first=keys.length?new Date(keys[0]+'T00:00:00'):start;
+    const span=Math.max(1,Math.ceil((today-first)/86400000)+1);
+    const n=Math.min(30,span), from=new Date(today);from.setDate(from.getDate()-n+1);
+    for(let i=0;i<n;i++){const d=new Date(from);d.setDate(from.getDate()+i);points.push({date:d,count:listenStats.days[dayKey(d)]||0});}
+  }else{
+    for(let i=0;i<days;i++){const d=new Date(start);d.setDate(start.getDate()+i);points.push({date:d,count:listenStats.days[dayKey(d)]||0});}
+  }
+  const max=Math.max(1,...points.map(p=>p.count));
+  $('#statsChart').innerHTML=points.map(p=>'<div class="stats-bar-wrap" title="'+esc(p.date.toLocaleDateString()+': '+p.count+' plays)+'"><div class="stats-bar" style="height:'+Math.max(2,p.count/max*100)+'%"></div></div>').join('');
+  const fmtDate=d=>d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  $('#statsStart').textContent=points.length?fmtDate(points[0].date):'—';
+  $('#statsEnd').textContent=points.length?fmtDate(points[points.length-1].date):'Today';
+}
+$('#statsFilters').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-range]');if(!b)return;
+  statsRange=b.dataset.range;$('#statsFilters').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderStats();
+});
+
 audio.addEventListener('ended',()=>{ if(audio.src===SILENT) return; next(true); });
-audio.addEventListener('play',()=>{ updateControls(); refreshPlayingRows(); notifyNative(); });
-audio.addEventListener('pause',()=>{ updateControls(); refreshPlayingRows(); saveState(); notifyNative(); });
+audio.addEventListener('play',()=>{ updateControls(); refreshPlayingRows(); notifyNative(); trackPlay(); lastStatsTick=Date.now(); });
+audio.addEventListener('pause',()=>{ lastStatsTick=0; updateControls(); refreshPlayingRows(); saveState(); notifyNative(); });
 // Android app: keeps music playing with the screen off and shows what is playing
 function notifyNative(){
   try{
@@ -1441,7 +1555,7 @@ function notifyNative(){
 audio.addEventListener('error',()=>{ if(S.loadedId&&audio.src&&audio.src!==SILENT){ toast('This song could not be played'); } });
 let lastSave=0;
 audio.addEventListener('timeupdate',()=>{
-  updateProgress();
+  updateProgress(); trackListenTime();
   const now=Date.now(); if(now-lastSave>5000){ lastSave=now; saveState(); }
 });
 audio.addEventListener('loadedmetadata',()=>{
@@ -1539,6 +1653,7 @@ window.mixtapeBack=function(){
   if(sheet.classList.contains('open')){ closeSheet(); return true; }
   if($('#player').classList.contains('open')){ closePlayer(); return true; }
   if(S.tab==='playlist'){ S.editing=false; showTab('playlists'); return true; }
+  if(S.tab==='stats'){ showTab('songs'); return true; }
   if(S.tab==='playlists'){ showTab('songs'); return true; }
   return false;
 };
