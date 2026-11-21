@@ -1,6 +1,6 @@
 {
-  "name": "Anand Music Player",
-  "short_name": "Anand",
+  "name": "Anand Music",
+  "short_name": "Anand Music",
   "description": "Your own songs and playlists, played from your phone with no internet.",
   "id": "./",
   "start_url": "./",
