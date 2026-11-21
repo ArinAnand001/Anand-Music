@@ -692,7 +692,7 @@ async function audioDbJSON(url){
   return r.json();
 }
 async function fetchArtworkImage(url){
-  if(!url||!/^https:\\/\\//i.test(url)) return null;
+  if(!url||!/^https:\/\//i.test(url)) return null;
   const r=await fetch(url,{cache:'force-cache'});
   if(!r.ok) return null;
   const blob=await r.blob();
